@@ -1,2 +1,2 @@
-# Spacetime02
-MNIST
+# MNIST
+My "Hello, World!" ML Project
