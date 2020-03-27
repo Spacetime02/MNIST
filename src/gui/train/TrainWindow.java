@@ -13,18 +13,13 @@ public class TrainWindow extends SecondaryWindow {
 	private MNISTTrainer trainer;
 
 	public TrainWindow() {
-		super("Train");
-	}
-
-	@Override
-	protected void initUI() {
-
+		JPanel
 	}
 
 	@Override
 	protected void prepare(Data train, Data test, List<FeedForwardNetwork> networks) {
 		this.networks = networks;
-		this.trainer = new MNISTTrainer(networks);
+		this.trainer = new MNISTTrainer(train, networks);
 	}
 
 }

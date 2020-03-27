@@ -1,9 +1,11 @@
 package gui;
 
-import java.awt.CardLayout;
+import java.awt.BorderLayout;
 import java.awt.Component;
 import java.awt.Container;
 import java.awt.Dimension;
+import java.awt.Font;
+import java.awt.LayoutManager;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -22,17 +24,23 @@ public class GUI extends JFrame {
 
 	private static final long serialVersionUID = 1L;
 
-	private CardLayout layout;
+	private LayoutManager layout;
 
 	private JPanel mainMenu;
 
 	private List<FeedForwardNetwork> network;
 //	private JPanel
 
+	// test
+	public static void main(String[] args) {
+		new GUI();
+	}
+
 	public GUI() {
 		super("Neural Networks");
 		initNetwork();
 		initUI();
+		setVisible(true);
 	}
 
 	// TODO network starts as null.
@@ -52,27 +60,36 @@ public class GUI extends JFrame {
 	}
 
 	private void initUI() {
-		layout = new CardLayout();
+		layout = new BorderLayout();
+		setLayout(layout);
 		initMainMenu();
+		setExtendedState(MAXIMIZED_BOTH);
 	}
 
 	private void initMainMenu() {
 		mainMenu = new JPanel(true);
-		mainMenu.setLayout(new BoxLayout(mainMenu, BoxLayout.Y_AXIS));
+		vLayout(mainMenu);
+
+		Font font = new Font(Font.DIALOG, Font.BOLD, 72);
 
 		JButton createButton = new JButton("Create Network");
+		createButton.setFont(font);
 		createButton.addActionListener(e -> {});
 
 		JButton loadButton = new JButton("Load Network");
+		loadButton.setFont(font);
 		loadButton.addActionListener(e -> {});
 
 		JButton trainButton = new JButton("Train Network");
+		trainButton.setFont(font);
 		trainButton.addActionListener(e -> {});
 
 		JButton testButton = new JButton("Test Network");
+		testButton.setFont(font);
 		testButton.addActionListener(e -> {});
 
 		JButton saveButton = new JButton("Save Network");
+		saveButton.setFont(font);
 		saveButton.addActionListener(e -> {});
 
 		// @formatter:off
@@ -110,6 +127,8 @@ public class GUI extends JFrame {
 				GUI.vGlue()
 				);
 		// @formatter:on
+
+		add(mainMenu, BorderLayout.CENTER);
 	}
 
 	static Box.Filler hGlue() {
