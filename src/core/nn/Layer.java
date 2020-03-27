@@ -89,6 +89,9 @@ public class Layer {
 			double[] vals = layerIndex > 0 ? values[iterIndex][layerIndex - 1] : x[iterIndex];
 			double[] dels = deltas[iterIndex][layerIndex];
 
+			if (layerIndex > 0)
+				vals[1] = vals[1];
+
 			for (int index = 0; index < size; index++) {
 //				System.out.println(layerIndex + ", " + iterIndex + ", " + index + ", " + size);
 				double val = vals[index] * learningRate;
@@ -115,6 +118,16 @@ public class Layer {
 
 	public ActivationFunction getActivationFunction() {
 		return activationFunction;
+	}
+
+	public String getWeightsAsString() {
+		StringBuilder builder = new StringBuilder();
+		for (int index = 0; index < size; index++) {
+			for (int nextIndex = 0; nextIndex < nextSize; nextIndex++)
+				builder.append(String.format(" %+20.3f", weights[index][nextIndex]));
+			builder.append('\n');
+		}
+		return builder.toString();
 	}
 
 }

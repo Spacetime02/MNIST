@@ -3,6 +3,7 @@ package core.nn;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.ExecutionException;
 
 import core.data.Data;
 import core.data.DataPoint;
@@ -60,7 +61,7 @@ public class MNISTTrainer {
 		return (data.getSize() - getFinalBatchSize()) / batchSize + 1;
 	}
 
-	public List<MNISTTestResult[][]> trainEpochs(int epochCount) {
+	public List<MNISTTestResult[][]> trainEpochs(int epochCount) throws InterruptedException, ExecutionException {
 		int trCount  = trainees.size();
 		int dataSize = data.getSize();
 
@@ -86,9 +87,15 @@ public class MNISTTrainer {
 		return allResults;
 	}
 
-	public List<MNISTTestResult[]> trainEpoch() {
+	public List<MNISTTestResult[]> trainEpoch() throws InterruptedException, ExecutionException {
 		int trCount  = trainees.size();
 		int dataSize = data.getSize();
+
+//		for (int trIndex = 0; trIndex < trCount; trIndex++) {
+//			System.out.println("Trainee " + trIndex + ":");
+//			System.out.println(trainees.get(trIndex).getWeightsAsString().indent(2));
+//			System.out.println();
+//		}
 
 		List<MNISTTestResult[]> allResults = new ArrayList<>(trCount);
 		for (int trIndex = 0; trIndex < trCount; trIndex++)
@@ -99,26 +106,25 @@ public class MNISTTrainer {
 
 		int batchCount = getBatchCount();
 
-		String bcStr  = Integer.toString(batchCount);
-		String format = String.format("\t%%%dd/%s batches%n", bcStr.length(), bcStr);
+//		String bcStr  = Integer.toString(batchCount);
+//		String format = String.format("  %%%dd/%s batches%n", bcStr.length(), bcStr);
 		for (int batchIndex = 0; batchIndex < batchCount; batchIndex++) {
-			System.out.printf(format, batchIndex);
+//			System.out.printf(format, batchIndex);
 			List<MNISTTestResult[]> allBatchResults = trainBatch(batchIndex);
 			for (int trIndex = 0; trIndex < trCount; trIndex++) {
 				MNISTTestResult[] batchResults = allBatchResults.get(trIndex);
 				System.arraycopy(batchResults, 0, allResults.get(trIndex), batchIndex * batchSize, batchResults.length);
 			}
 		}
-		System.out.printf(format, batchCount);
-
+//		System.out.printf(format, batchCount);
 		return allResults;
 	}
 
-	public List<MNISTTestResult[]> trainBatch(int batchIndex) {
+	public List<MNISTTestResult[]> trainBatch(int batchIndex) throws InterruptedException, ExecutionException {
 		return trainBatchFrom(batchSize * batchIndex);
 	}
 
-	public List<MNISTTestResult[]> trainBatchFrom(int start) {
+	public List<MNISTTestResult[]> trainBatchFrom(int start) throws InterruptedException, ExecutionException {
 		int trCount   = trainees.size();
 		int dataSize  = data.getSize();
 		int realStart = start < 0 ? 0 : start;

@@ -2,11 +2,23 @@ package core.nn;
 
 import java.util.Arrays;
 import java.util.Objects;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 import core.data.DataPoint;
 import util.function.IntToDoubleTriFunction;
 
 public class FeedForwardNetwork {
+
+	private static final int THREAD_COUNT = Runtime.getRuntime().availableProcessors();
+
+	private static final ExecutorService THREAD_POOL = Executors.newFixedThreadPool(THREAD_COUNT);
+
+	static {
+		System.out.println("Thread Count = " + THREAD_COUNT);
+	}
 
 	private final int inputSize;
 	private final int outputSize;
@@ -40,7 +52,7 @@ public class FeedForwardNetwork {
 		return pred;
 	}
 
-	public double[][] train(DataPoint[] batch) {
+	public double[][] train(DataPoint[] batch) throws InterruptedException, ExecutionException {
 		int len = batch.length;
 
 		double[][] x = new double[len][];
@@ -59,54 +71,65 @@ public class FeedForwardNetwork {
 		return train(x, y);
 	}
 
-	public double[][] train(double[][] x, double[][] y) {
+	public double[][] train(double[][] x, double[][] y) throws InterruptedException, ExecutionException {
 		Objects.requireNonNull(x);
 		Objects.requireNonNull(y);
-		int batLen = x.length;
-		if (batLen != y.length)
-			throw new IllegalArgumentException("Batch size mismatch: input batch size (" + batLen + ") != output batch size (" + y.length + ")");
+		int iterCount = x.length;
+		if (iterCount != y.length)
+			throw new IllegalArgumentException("Batch size mismatch: input batch size (" + iterCount + ") != output batch size (" + y.length + ").");
 
-		double[][] pred = new double[batLen][];
+		double[][] pred = new double[iterCount][];
 
 		// Excludes Input Layer, Includes Output Layer
-		double[][][] valuesNoAct = new double[batLen][layerCount][];
-		double[][][] values      = new double[batLen][layerCount][];
-		double[][][] deltas      = new double[batLen][layerCount][];
+		double[][][] valuesNoAct = new double[iterCount][layerCount][];
+		double[][][] values      = new double[iterCount][layerCount][];
+		double[][][] deltas      = new double[iterCount][layerCount][];
 
-		for (int iterIndex = 0; iterIndex < batLen; iterIndex++) {
-			double[] curX = x[iterIndex];
-			double[] curY = y[iterIndex];
-			Objects.requireNonNull(curX);
-			Objects.requireNonNull(curY);
-			if (curX.length != inputSize)
-				throw new IllegalArgumentException("Wrong input size (" + curX.length + ") on iteration " + iterIndex + ".");
-			if (curY.length != outputSize)
-				throw new IllegalArgumentException("Wrong output size (" + curY.length + ") on iteration " + iterIndex + ".");
+		@SuppressWarnings("rawtypes")
+		Future[] futures = new Future[THREAD_COUNT];
 
-			// Forward Propagation (value calculation)
-			double[] curVals = Arrays.copyOf(curX, inputSize);
-			for (int layerIndex = 0; layerIndex < layerCount; layerIndex++) {
-				curVals = layers[layerIndex].feedForwardNoActivation(curVals);
-				valuesNoAct[iterIndex][layerIndex] = Arrays.copyOf(curVals, curVals.length);
-				layers[layerIndex].getActivationFunction().applyAll(curVals);
-				values[iterIndex][layerIndex] = Arrays.copyOf(curVals, curVals.length);
-			}
-			pred[iterIndex] = curVals;
+		for (int threadIndex = 0; threadIndex < THREAD_COUNT; threadIndex++) {
+			int      start = threadIndex;
+			Runnable task  = () -> {
+								for (int iterIndex = start; iterIndex < iterCount; iterIndex += THREAD_COUNT) {
+									double[] curX = x[iterIndex];
+									double[] curY = y[iterIndex];
+									Objects.requireNonNull(curX);
+									Objects.requireNonNull(curY);
+									if (curX.length != inputSize)
+										throw new IllegalArgumentException("Wrong input size (" + curX.length + ") on iteration " + iterIndex + ".");
+									if (curY.length != outputSize)
+										throw new IllegalArgumentException("Wrong output size (" + curY.length + ") on iteration " + iterIndex + ".");
 
-			// Backward Propagation (delta calculation)
-			double[] curDels = new double[outputSize];
-			for (int index = 0; index < outputSize; index++)
-				curDels[index] = curVals[index] - curY[index];
-			for (int layerIndex = layerCount - 1; layerIndex >= 0; layerIndex--) {
-				deltas[iterIndex][layerIndex] = Arrays.copyOf(curDels, curDels.length);
-//				System.out.println(layerIndex);
-//				System.out.println(iterIndex);
-//				System.out.println(values[iterIndex].length);
-				if (layerIndex > 0)
-					curDels = layers[layerIndex]
-							.feedBackward(valuesNoAct[iterIndex][layerIndex - 1], values[iterIndex][layerIndex - 1], deltas[iterIndex][layerIndex]);
-			}
+									// Forward Propagation (value calculation)
+									double[] curVals = Arrays.copyOf(curX, inputSize);
+									for (int layerIndex = 0; layerIndex < layerCount; layerIndex++) {
+										curVals = layers[layerIndex].feedForwardNoActivation(curVals);
+										valuesNoAct[iterIndex][layerIndex] = Arrays.copyOf(curVals, curVals.length);
+										layers[layerIndex].getActivationFunction().applyAll(curVals);
+										values[iterIndex][layerIndex] = Arrays.copyOf(curVals, curVals.length);
+									}
+									pred[iterIndex] = curVals;
+
+									// Backward Propagation (delta calculation)
+									double[] curDels = new double[outputSize];
+									for (int index = 0; index < outputSize; index++)
+										curDels[index] = curVals[index] - curY[index];
+									for (int layerIndex = layerCount - 1; layerIndex >= 0; layerIndex--) {
+										deltas[iterIndex][layerIndex] = Arrays.copyOf(curDels, curDels.length);
+//									System.out.println(layerIndex);
+//									System.out.println(iterIndex);
+//									System.out.println(values[iterIndex].length);
+										if (layerIndex > 0)
+											curDels = layers[layerIndex].feedBackward(valuesNoAct[iterIndex][layerIndex - 1], values[iterIndex][layerIndex - 1], deltas[iterIndex][layerIndex]);
+									}
+								}
+							};
+			futures[threadIndex] = THREAD_POOL.submit(task);
 		}
+
+		for (Future<?> future : futures)
+			future.get();
 
 		// Adjustment (weight calculation)
 		for (int layerIndex = 0; layerIndex < layerCount; layerIndex++)
@@ -136,6 +159,15 @@ public class FeedForwardNetwork {
 
 	public double getOutputSize() {
 		return outputSize;
+	}
+
+	public String getWeightsAsString() {
+		StringBuilder builder = new StringBuilder();
+		for (int layerIndex = 0; layerIndex < layerCount; layerIndex++) {
+			builder.append("Layer " + layerIndex + ":\n")
+					.append(layers[layerIndex].getWeightsAsString());
+		}
+		return builder.toString();
 	}
 
 }
