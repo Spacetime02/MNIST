@@ -2,6 +2,7 @@ package main;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.PrintStream;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 
@@ -20,7 +21,13 @@ public final class Main {
 
 	private Main() {}
 
-	public static void main(String[] args) throws IOException, InterruptedException, ExecutionException {
+	public static void main(String[] args)  {
+		PrintStream o = System.out;
+		o.println("Options:");
+		o.println("");
+	}
+
+	public static void train() throws IOException, InterruptedException, ExecutionException {
 
 //		FeedForwardNetwork tn = new FeedForwardNetworkBuilder()
 //				.addLayer(3, ActivationFunctionFactory.createLeakyReLU(0.01))
@@ -31,12 +38,8 @@ public final class Main {
 //				.build();
 //		System.out.println(Arrays.toString(tn.predict(new double[] { -1, 2, 4 })));
 
-		final int hiddenLayerSize = 48;
-//		final int    hiddenLayerCount = 2;
-		final double leakSlope    = 0.01;
-		final double learningRate = 0.005;
-		final int    batchSize    = 12;
-		final int    epochCount   = 64;
+		final int batchSize  = 120;
+		final int epochCount = 256;
 
 		File dir = new File("data");
 
@@ -46,11 +49,12 @@ public final class Main {
 //		Data test  = loader.load("test");
 
 		FeedForwardNetworkBuilder builder = new FeedForwardNetworkBuilder()
-				.addLayer(MNISTData.IN_SIZE, ActivationFunctionFactory.createFastLogistic())
-				.addLayer(hiddenLayerSize, ActivationFunctionFactory.createLeakyReLU(leakSlope))
-				.addLayer(hiddenLayerSize, ActivationFunctionFactory.createFastLogistic())
+				.addLayer(MNISTData.IN_SIZE, ActivationFunctionFactory.createLeakyReLU(0.01))
+				.addLayer(512, ActivationFunctionFactory.createLeakyReLU(0.01))
+				.addLayer(128, ActivationFunctionFactory.createLeakyReLU(0.01))
+				.addLayer(32, ActivationFunctionFactory.createFastLogistic())
 				.setOutputSize(MNISTData.OUT_SIZE)
-				.setLearningRate(learningRate)
+				.setLearningRate(0.0015)
 				.setWeightInitializer(FeedForwardNetworkBuilder.gaussianWeightInitializer());
 
 		FeedForwardNetwork network = builder.build();
