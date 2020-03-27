@@ -73,7 +73,7 @@ public final class MNISTData implements Data {
 			byte[] byteIn = input[index];
 			in = new double[IN_SIZE];
 			for (int i = 0; i < IN_SIZE; i++)
-				in[i] = Byte.toUnsignedInt(byteIn[i]);
+				in[i] = Byte.toUnsignedInt(byteIn[i]) / 255d;
 			out = new double[OUT_SIZE];
 			out[output[index]] = 1;
 		}
