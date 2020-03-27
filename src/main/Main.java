@@ -21,7 +21,11 @@ public final class Main {
 
 	private Main() {}
 
+<<<<<<< HEAD
 	public static void main(String[] args) {
+=======
+	public static void main(String[] args)  {
+>>>>>>> branch 'master' of https://github.com/Spacetime02/MNIST.git
 		PrintStream o = System.out;
 		o.println("Options:");
 		o.println("");
