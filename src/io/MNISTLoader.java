@@ -1,9 +1,7 @@
 package io;
 
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.nio.file.Path;
 
 import core.data.Data;
 import core.data.MNISTData;
@@ -19,9 +17,13 @@ public class MNISTLoader {
 	}
 
 	public Data load(String name) throws IOException {
-		File imgs = new File(dir, name + "-images.idx3-ubyte");
-		File lbls = new File(dir, name + "-labels.idx1-ubyte");
+		File images = new File(dir, name + "-images.idx3-ubyte");
+		File labels = new File(dir, name + "-labels.idx1-ubyte");
+		
+		return load(images, labels);
+	}
 
+	public Data load(File imgs, File lbls) throws IOException {
 		byte[][][] imgArr;
 		byte[]     lblArr;
 

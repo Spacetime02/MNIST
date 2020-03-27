@@ -2,7 +2,9 @@ package main;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.PrintStream;
 import java.util.List;
+import java.util.concurrent.ExecutionException;
 
 import core.data.Data;
 import core.data.MNISTData;
@@ -19,13 +21,25 @@ public final class Main {
 
 	private Main() {}
 
-	public static void main(String[] args) throws IOException {
-		final int    hiddenLayerSize  = 1000;
-		final int    hiddenLayerCount = 4;
-		final double leakSlope        = 0.01;
-		final double learningRate     = 0.01;
-		final int    batchSize        = 20;
-		final int    epochCount       = 12;
+	public static void main(String[] args) {
+		PrintStream o = System.out;
+		o.println("Options:");
+		o.println("");
+	}
+
+	public static void train() throws IOException, InterruptedException, ExecutionException {
+
+//		FeedForwardNetwork tn = new FeedForwardNetworkBuilder()
+//				.addLayer(3, ActivationFunctionFactory.createLeakyReLU(0.01))
+//				.addLayer(3, ActivationFunctionFactory.createLeakyReLU(0.01))
+//				.setOutputSize(3)
+//				.setLearningRate(0.1)
+//				.setWeightInitializer((a, b, c) -> b == c ? 1 : 0)
+//				.build();
+//		System.out.println(Arrays.toString(tn.predict(new double[] { -1, 2, 4 })));
+
+		final int batchSize  = 120;
+		final int epochCount = 256;
 
 		File dir = new File("data");
 
@@ -35,28 +49,47 @@ public final class Main {
 //		Data test  = loader.load("test");
 
 		FeedForwardNetworkBuilder builder = new FeedForwardNetworkBuilder()
-				.addLayer(MNISTData.IN_SIZE, null);
-		for (int layerIndex = 0; layerIndex < hiddenLayerCount; layerIndex++)
-			builder.setActivationFunction(layerIndex, ActivationFunctionFactory.createLeakyReLU(leakSlope))
-					.addLayer(hiddenLayerSize, null);
-		builder.setActivationFunction(hiddenLayerCount, ActivationFunctionFactory.createFastLogistic())
+				.addLayer(MNISTData.IN_SIZE, ActivationFunctionFactory.createLeakyReLU(0.01))
+				.addLayer(512, ActivationFunctionFactory.createLeakyReLU(0.01))
+				.addLayer(128, ActivationFunctionFactory.createLeakyReLU(0.01))
+				.addLayer(32, ActivationFunctionFactory.createFastLogistic())
 				.setOutputSize(MNISTData.OUT_SIZE)
-				.setLearningRate(learningRate)
+				.setLearningRate(0.0015)
 				.setWeightInitializer(FeedForwardNetworkBuilder.gaussianWeightInitializer());
 
 		FeedForwardNetwork network = builder.build();
 
 		MNISTTrainer trainer = new MNISTTrainer(train, network);
-		trainer.shuffleData();
+//		trainer.shuffleData();
 		trainer.setBatchSize(batchSize);
-		List<MNISTTestResult[][]> allRes     = trainer.trainEpochs(epochCount);
-		MNISTTestResult[][]       networkRes = allRes.get(0);
-		MNISTTestResult[]         last       = networkRes[epochCount - 1];
 
-		double totalLoss = 0;
-		for (MNISTTestResult res : last)
-			totalLoss += res.getLoss();
-		System.out.println(totalLoss);
+		double[] loss = new double[epochCount];
+		double[] err  = new double[epochCount];
+
+		List<MNISTTestResult[][]> allRes = trainer.trainEpochs(epochCount);
+
+		MNISTTestResult[][] networkRes = allRes.get(0);
+
+		for (int epochIndex = 0; epochIndex < epochCount; epochIndex++) {
+			MNISTTestResult[] epochRes = networkRes[epochIndex];
+
+			double errRate = 0;
+			double avgLoss = 0;
+			for (MNISTTestResult res : epochRes) {
+				avgLoss += res.getLoss();
+				if (!res.isCorrect())
+					errRate++;
+			}
+			System.out.println(errRate);
+			avgLoss /= trainer.getDataSize();
+			errRate /= trainer.getDataSize();
+			loss[epochIndex] = avgLoss;
+			err[epochIndex] = errRate;
+		}
+		System.out.println("Epoch\tAverage Loss");
+		for (int epochIndex = 0; epochIndex < epochCount; epochIndex++)
+			System.out.println(epochIndex + "\t" + loss[epochIndex] + "\t" + err[epochIndex]);
+
 //		benchmark();
 	}
 
