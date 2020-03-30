@@ -26,11 +26,16 @@ public class FeedForwardNetworkBuilder {
 	private final List<ActivationFunction> activationFunctions = new ArrayList<>();
 	private Double                         learningRate        = null;
 	private IntToDoubleTriFunction         weightInitializer   = null;
+	private String                         name                = null;
 
 	public FeedForwardNetworkBuilder addLayer(int layerSize, ActivationFunction activationFunction) {
 		layerSizes.add(layerSize);
 		activationFunctions.add(activationFunction);
 		return this;
+	}
+
+	public FeedForwardNetworkBuilder addLayer(int layerSize) {
+		return addLayer(layerSize, null);
 	}
 
 	public FeedForwardNetworkBuilder setLayerSize(int layerIndex, int layerSize) {
@@ -58,9 +63,11 @@ public class FeedForwardNetworkBuilder {
 		return this;
 	}
 
-	/**
-	 * Replaces all {@code ActivationFunctions} that are equal to {@code null} with {@code ActivationFunctionFactory.createIdentity()}.
-	 */
+	public FeedForwardNetworkBuilder setName(String name) {
+		this.name = name;
+		return this;
+	}
+
 	public FeedForwardNetwork build() {
 		if (outputSize == null)
 			throw new IllegalStateException("The output size has not been set.");
@@ -68,13 +75,17 @@ public class FeedForwardNetworkBuilder {
 			throw new IllegalStateException("The learning rate has not been set.");
 		if (weightInitializer == null)
 			throw new IllegalStateException("The weight generator has not been set.");
+		int nullIndex = activationFunctions.indexOf(null);
+		if (nullIndex >= 0)
+			throw new IllegalStateException("The activation function at index " + nullIndex + " has not been set.");
+		if (name == null)
+			throw new IllegalStateException("The name has not been set.");
 		int   numLayers    = layerSizes.size();
 		int[] layerSizeArr = new int[numLayers];
 		for (int layerIndex = 0; layerIndex < numLayers; layerIndex++)
 			layerSizeArr[layerIndex] = layerSizes.get(layerIndex);
-		activationFunctions.replaceAll(af -> af == null ? ActivationFunctionFactory.createIdentity() : af);
 		ActivationFunction[] activationFunctionArr = activationFunctions.toArray(new ActivationFunction[numLayers]);
-		return new FeedForwardNetwork(weightInitializer, layerSizeArr, outputSize, activationFunctionArr, learningRate);
+		return new FeedForwardNetwork(name, weightInitializer, layerSizeArr, outputSize, activationFunctionArr, learningRate);
 	}
 
 }

@@ -1,42 +1,85 @@
 package gui;
 
-import java.awt.BorderLayout;
+import java.awt.CardLayout;
+import java.awt.Color;
 import java.awt.Component;
-import java.awt.Container;
+import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.Font;
-import java.awt.LayoutManager;
+import java.awt.event.ActionListener;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.IntSupplier;
+import java.util.function.Supplier;
+import java.util.function.UnaryOperator;
 
-import javax.swing.Box;
-import javax.swing.BoxLayout;
 import javax.swing.JButton;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
+import javax.swing.UIManager;
+import javax.swing.plaf.ColorUIResource;
 
+import core.data.Data;
 import core.data.MNISTData;
 import core.nn.ActivationFunctionFactory;
 import core.nn.FeedForwardNetwork;
 import core.nn.FeedForwardNetworkBuilder;
+import gui.train.TrainMenu;
+import io.MNISTLoader;
 
 public class GUI extends JFrame {
 
 	private static final long serialVersionUID = 1L;
 
-	private LayoutManager layout;
+	private CardLayout layout;
 
-	private JPanel mainMenu;
+	private JPanel    mainMenu;
+	private TrainMenu trainPane;
 
-	private List<FeedForwardNetwork> network;
+	private List<FeedForwardNetwork> networks;
+
+	private Data trainData;
+	private Data testData;
 //	private JPanel
 
 	// test
-	public static void main(String[] args) {
-		new GUI();
+	public static void main(String[] args) throws IOException {
+		File dir = new File("data");
+
+		MNISTLoader loader = new MNISTLoader(dir);
+
+		Data train = loader.load("train");
+		Data test  = loader.load("test");
+
+		new GUI(train, test);
 	}
 
-	public GUI() {
+//	public static void main(String[] args) {
+//		UIDefaults defaults = UIManager.getDefaults();
+//		System.out.println(defaults.size() + " properties defined!");
+//		String[]   colName = { "Key", "Value" };
+//		String[][] rowData = new String[defaults.size()][2];
+//		int        i       = 0;
+//		for (Enumeration<Object> e = defaults.keys(); e.hasMoreElements(); i++) {
+//			Object key = e.nextElement();
+//			rowData[i][0] = key.toString();
+//			rowData[i][1] = "" + defaults.get(key);
+//			System.out.println(rowData[i][0] + " ,, " + rowData[i][1]);
+//		}
+//		Arrays.sort(rowData, Comparator.comparing(r -> r[0]));
+//		JFrame f = new JFrame("UIManager properties default values");
+//		JTable t = new JTable(rowData, colName);
+//		f.setContentPane(new JScrollPane(t));
+//		// f.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+//		f.pack();
+//		f.setVisible(true);
+//	}
+
+	public GUI(Data train, Data test) {
 		super("Neural Networks");
 		initNetwork();
 		initUI();
@@ -45,7 +88,7 @@ public class GUI extends JFrame {
 
 	// TODO network starts as null.
 	private void initNetwork() {
-		network = new ArrayList<>(1);
+		networks = new ArrayList<>(1);
 
 		FeedForwardNetworkBuilder builder = new FeedForwardNetworkBuilder()
 				.addLayer(MNISTData.IN_SIZE, ActivationFunctionFactory.createLeakyReLU(0.01))
@@ -54,416 +97,137 @@ public class GUI extends JFrame {
 				.addLayer(32, ActivationFunctionFactory.createFastLogistic())
 				.setOutputSize(MNISTData.OUT_SIZE)
 				.setLearningRate(0.0015)
-				.setWeightInitializer(FeedForwardNetworkBuilder.gaussianWeightInitializer());
+				.setWeightInitializer(FeedForwardNetworkBuilder.gaussianWeightInitializer())
+				.setName("Stephen");
 
-		network.add(builder.build());
+		networks.add(builder.build());
+
+		for (int i = 0; i < 50; i++) {
+			networks.add(new FeedForwardNetworkBuilder()
+					.addLayer(MNISTData.IN_SIZE, ActivationFunctionFactory.createIdentity())
+					.setOutputSize(MNISTData.OUT_SIZE)
+					.setLearningRate(1)
+					.setWeightInitializer((a, b, c) -> 1d)
+					.setName("Filler " + i)
+					.build());
+		}
 	}
 
 	private void initUI() {
-		layout = new BorderLayout();
+		setBackground(Colors.BACKGROUND_0);
+		layout = new CardLayout();
 		setLayout(layout);
 		initMainMenu();
+		initTrainPane();
 		setExtendedState(MAXIMIZED_BOTH);
+		setDefaultCloseOperation(EXIT_ON_CLOSE);
 	}
 
 	private void initMainMenu() {
 		mainMenu = new JPanel(true);
-		vLayout(mainMenu);
+		mainMenu.setBackground(Colors.BACKGROUND_0);
+		GUIUtils.vLayout(mainMenu);
 
-		Font font = new Font(Font.DIALOG, Font.BOLD, 72);
+		Font font = new Font(Font.DIALOG, Font.PLAIN, 72);
 
-		JButton createButton = new JButton("Create Network");
-		createButton.setFont(font);
-		createButton.addActionListener(e -> {});
+		JButton createButton = mkButton("Create", font, Colors.CREATE_1, Colors.CREATE, d -> new Dimension(Math.max(d.width, getWidth() / 3), d.height), e -> {
 
-		JButton loadButton = new JButton("Load Network");
-		loadButton.setFont(font);
-		loadButton.addActionListener(e -> {});
+		});
 
-		JButton trainButton = new JButton("Train Network");
-		trainButton.setFont(font);
-		trainButton.addActionListener(e -> {});
+		JButton editButton = mkButton("Edit", font, Colors.EDIT_1, Colors.EDIT, createButton, e -> {
 
-		JButton testButton = new JButton("Test Network");
-		testButton.setFont(font);
-		testButton.addActionListener(e -> {});
+		});
 
-		JButton saveButton = new JButton("Save Network");
-		saveButton.setFont(font);
-		saveButton.addActionListener(e -> {});
+		JButton loadButton = mkButton("Load", font, Colors.LOAD_1, Colors.LOAD, createButton, e -> {
+
+		});
+
+		JButton saveButton = mkButton("Save", font, Colors.SAVE_1, Colors.SAVE, createButton, e -> {
+
+		});
+
+		JButton trainButton = mkButton("Train", font, Colors.TRAIN_1, Colors.TRAIN, createButton, e -> {
+			trainPane.setup(trainData, networks);
+			layout.show(getContentPane(), "train");
+		});
+
+		JButton testButton = mkButton("Test", font, Colors.TEST_1, Colors.TEST, createButton, e -> {
+
+		});
 
 		// @formatter:off
-		GUI.setup(mainMenu,
-				GUI.vGlue(),
-				GUI.hBox(
-						GUI.hGlue(),
-						createButton,
-						GUI.hGlue()
-						),
-				GUI.vGlue(),
-				GUI.hBox(
-						GUI.hGlue(),
-						loadButton,
-						GUI.hGlue()
-						),
-				GUI.vGlue(),
-				GUI.hBox(
-						GUI.hGlue(),
-						trainButton,
-						GUI.hGlue()
-						),
-				GUI.vGlue(),
-				GUI.hBox(
-						GUI.hGlue(),
-						testButton,
-						GUI.hGlue()
-						),
-				GUI.vGlue(),
-				GUI.hBox(
-						GUI.hGlue(),
-						saveButton,
-						GUI.hGlue()
-						),
-				GUI.vGlue()
+		GUIUtils.vSpace(
+				mainMenu,
+				GUIUtils.hSpace(null, createButton),
+				GUIUtils.hSpace(null, editButton),
+				GUIUtils.hSpace(null, loadButton),
+				GUIUtils.hSpace(null, saveButton),
+				GUIUtils.hSpace(null, trainButton),
+				GUIUtils.hSpace(null, testButton)
 				);
 		// @formatter:on
 
-		add(mainMenu, BorderLayout.CENTER);
+		add(mainMenu, "main");
 	}
 
-	static Box.Filler hGlue() {
-		return (Box.Filler) Box.createHorizontalGlue();
+	private void initTrainPane() {
+		trainPane = new TrainMenu();
+		add(trainPane, "train");
 	}
 
-	static Box.Filler vGlue() {
-		return (Box.Filler) Box.createVerticalGlue();
+	public static JButton mkButton(String text, Font font, Color bg, Color fg, Component sizeSource, ActionListener listener) {
+		return mkButton(text, font, bg, fg, sizeSource == null ? null : (Supplier<Dimension>) sizeSource::getSize, listener);
 	}
 
-	static Box.Filler glue() {
-		return (Box.Filler) Box.createGlue();
+	public static JButton mkButton(String text, Font font, Color bg, Color fg, IntSupplier width, IntSupplier height, ActionListener listener) {
+		return mkButton(text, font, bg, fg, width == null ? height == null ? null : d -> new Dimension(d.width, height.getAsInt()) : height == null ? d -> new Dimension(width.getAsInt(), d.height) : d -> new Dimension(width.getAsInt(), height.getAsInt()), listener);
 	}
 
-	static Box.Filler hStrut(int size) {
-		return (Box.Filler) Box.createHorizontalStrut(size);
+	public static JButton mkButton(String text, Font font, Color bg, Color fg, Supplier<Dimension> size, ActionListener listener) {
+		return mkButton(text, font, bg, fg, size == null ? null : d -> size.get(), listener);
 	}
 
-	static Box.Filler vStrut(int size) {
-		return (Box.Filler) Box.createVerticalStrut(size);
-	}
+	@SuppressWarnings("serial")
+	public static JButton mkButton(String text, Font font, Color bg, Color fg, UnaryOperator<Dimension> size, ActionListener listener) {
+		JButton button;
+		if (size == null)
+			button = new JButton(" " + text + " ");
+		else
+			button = new JButton(" " + text + " ") {
 
-	static Box.Filler rigidArea(int width, int height) {
-		return rArea(new Dimension(width, height));
-	}
+				@Override
+				public Dimension getPreferredSize() {
+					return size.apply(super.getPreferredSize());
+				}
 
-	static Box.Filler rArea(Dimension dim) {
-		return (Box.Filler) Box.createRigidArea(dim);
-	}
+			};
 
-	static Box hBox(Component... children) {
-		return setup(Box.createHorizontalBox(), children);
-	}
+		ColorUIResource bgRes = new ColorUIResource(bg);
+		button.addMouseListener(new MouseAdapter() {
 
-	static Box vBox(Component... children) {
-		return setup(Box.createVerticalBox(), children);
-	}
+			@Override
+			public void mousePressed(MouseEvent e) {
+				UIManager.put("Button.select", bgRes);
+			}
 
-	static BoxLayout hLayout(Container parent) {
-		return layout(parent, BoxLayout.X_AXIS);
-	}
+		});
 
-	static BoxLayout vLayout(Container parent) {
-		return layout(parent, BoxLayout.Y_AXIS);
-	}
+		button.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
 
-	static BoxLayout layout(Container parent, int axis) {
-		BoxLayout layout = new BoxLayout(parent, axis);
-		if (parent != null)
-			parent.setLayout(layout);
-		return layout;
-	}
+		button.setFocusPainted(false);
 
-	static <T extends Container> T setup(T parent, Component... children) {
-		if (parent != null)
-			for (Component child : children)
-				parent.add(child);
-		return parent;
+		button.setFont(font);
+
+		button.setBackground(bg);
+		button.setForeground(fg);
+
+		button.setBorder(null);
+
+		if (listener != null)
+			button.addActionListener(listener);
+
+		return button;
+
 	}
 
 }
-
-/*
-@formatter:off
-package main;
-
-import java.io.File;
-import java.io.IOException;
-import java.io.PrintStream;
-import java.util.List;
-import java.util.Scanner;
-import java.util.concurrent.ExecutionException;
-
-import core.data.Data;
-import core.data.MNISTData;
-import core.nn.ActivationFunctionFactory;
-import core.nn.FeedForwardNetwork;
-import core.nn.FeedForwardNetworkBuilder;
-import core.nn.MNISTTestResult;
-import core.nn.MNISTTrainer;
-import io.MNISTLoader;
-import io.idx.IDX1UByteReader;
-import io.idx.IDX3UByteReader;
-
-public final class Main {
-
-	private static final String OPTIONS = "Options:\n"
-			+ "1\tTrain Network\n"
-			+ "2\tTest Network\n"
-			+ "3\tLoad Weights\n"
-			+ "4\tSave Weights";
-
-	private Main() {}
-
-	public static void main(String[] args) {
-		String in;
-		
-		Integer opt;
-		
-		PrintStream o = System.out;
-
-		Scanner i = new Scanner(System.in);
-		
-		while (opt == null) {
-			o.println(OPTIONS);
-			try
-		}
-		
-		switch (i.nextInt()) {
-		case 1:
-			o.println
-			train();
-		}
-	}
-
-	private static void train() {
-
-	}
-
-	public static void tr() throws IOException, InterruptedException, ExecutionException {
-
-//		FeedForwardNetwork tn = new FeedForwardNetworkBuilder()
-//				.addLayer(3, ActivationFunctionFactory.createLeakyReLU(0.01))
-//				.addLayer(3, ActivationFunctionFactory.createLeakyReLU(0.01))
-//				.setOutputSize(3)
-//				.setLearningRate(0.1)
-//				.setWeightInitializer((a, b, c) -> b == c ? 1 : 0)
-//				.build();
-//		System.out.println(Arrays.toString(tn.predict(new double[] { -1, 2, 4 })));
-
-		final int batchSize  = 120;
-		final int epochCount = 256;
-
-		File dir = new File("data");
-
-		MNISTLoader loader = new MNISTLoader(dir);
-
-		Data train = loader.load("train");
-//		Data test  = loader.load("test");
-
-		FeedForwardNetworkBuilder builder = new FeedForwardNetworkBuilder()
-				.addLayer(MNISTData.IN_SIZE, ActivationFunctionFactory.createLeakyReLU(0.01))
-				.addLayer(128, ActivationFunctionFactory.createLeakyReLU(0.01))
-				.addLayer(64, ActivationFunctionFactory.createLeakyReLU(0.01))
-				.addLayer(32, ActivationFunctionFactory.createLeakyReLU(0.01))
-				.addLayer(16, ActivationFunctionFactory.createFastLogistic())
-				.setOutputSize(MNISTData.OUT_SIZE)
-				.setLearningRate(0.0015)
-				.setWeightInitializer(FeedForwardNetworkBuilder.gaussianWeightInitializer());
-
-		FeedForwardNetwork network = builder.build();
-
-		MNISTTrainer trainer = new MNISTTrainer(train, network);
-//		trainer.shuffleData();
-		trainer.setBatchSize(batchSize);
-
-		double[] loss = new double[epochCount];
-		double[] err  = new double[epochCount];
-
-		List<MNISTTestResult[][]> allRes = trainer.trainEpochs(epochCount);
-
-		MNISTTestResult[][] networkRes = allRes.get(0);
-
-		for (int epochIndex = 0; epochIndex < epochCount; epochIndex++) {
-			MNISTTestResult[] epochRes = networkRes[epochIndex];
-
-			double errRate = 0;
-			double avgLoss = 0;
-			for (MNISTTestResult res : epochRes) {
-				avgLoss += res.getLoss();
-				if (!res.isCorrect())
-					errRate++;
-			}
-			System.out.println(errRate);
-			avgLoss /= trainer.getDataSize();
-			errRate /= trainer.getDataSize();
-			loss[epochIndex] = avgLoss;
-			err[epochIndex] = errRate;
-		}
-		System.out.println("Epoch\tAverage Loss");
-		for (int epochIndex = 0; epochIndex < epochCount; epochIndex++)
-			System.out.println(epochIndex + "\t" + loss[epochIndex] + "\t" + err[epochIndex]);
-
-//		benchmark();
-	}
-
-	@SuppressWarnings("unused")
-	private static void benchmark() {
-		double[] toCalc = new double[200000000];
-		double[] res    = new double[200000000];
-		for (int i = 0; i < 200000000; i++)
-			toCalc[i] = i - 100000000;
-		long      sum = 0;
-		long      time, delta;
-		final int num = 4;
-		for (int j = 0; j < num; j++) {
-			time = System.nanoTime();
-			for (int i = 0; i < 200000000; i++)
-				res[i] = Math.abs(toCalc[i]);
-			delta = System.nanoTime() - time;
-			time = System.nanoTime();
-			sum += delta;
-		}
-		System.out.printf("%15s: %15dns%n", "Math.abs(x)", sum);
-		sum = 0;
-		for (int j = 0; j < num; j++) {
-			time = System.nanoTime();
-			for (int i = 0; i < 200000000; i++)
-				res[i] = Math.sqrt(toCalc[i]);
-			delta = System.nanoTime() - time;
-			time = System.nanoTime();
-			sum += delta;
-		}
-		System.out.printf("%15s: %15dns%n", "Math.sqrt(x)", sum);
-		sum = 0;
-		for (int j = 0; j < num; j++) {
-			time = System.nanoTime();
-			for (int i = 0; i < 200000000; i++)
-				res[i] = Math.sqrt(toCalc[i]);
-			delta = System.nanoTime() - time;
-			time = System.nanoTime();
-			sum += delta;
-		}
-		System.out.printf("%15s: %15dns%n", "Math.sqrt(x)", sum);
-		sum = 0;
-		for (int j = 0; j < num; j++) {
-			time = System.nanoTime();
-			for (int i = 0; i < 200000000; i++)
-				res[i] = Math.exp(toCalc[i]);
-			delta = System.nanoTime() - time;
-			time = System.nanoTime();
-			sum += delta;
-		}
-		System.out.printf("%15s: %15dns%n", "Math.exp(x)", sum);
-		sum = 0;
-		for (int j = 0; j < num; j++) {
-			time = System.nanoTime();
-			for (int i = 0; i < 200000000; i++)
-				res[i] = Math.log(toCalc[i]);
-			delta = System.nanoTime() - time;
-			time = System.nanoTime();
-			sum += delta;
-		}
-		System.out.printf("%15s: %15dns%n", "Math.log(x)", sum);
-		sum = 0;
-		for (int j = 0; j < num; j++) {
-			time = System.nanoTime();
-			for (int i = 0; i < 200000000; i++)
-				res[i] = Math.tanh(toCalc[i]);
-			delta = System.nanoTime() - time;
-			time = System.nanoTime();
-			sum += delta;
-		}
-		System.out.printf("%15s: %15dns%n", "Math.tanh(x)", sum);
-		sum = 0;
-		for (int j = 0; j < num; j++) {
-			time = System.nanoTime();
-			for (int i = 0; i < 200000000; i++)
-				res[i] = Math.pow(toCalc[i], toCalc[i]);
-			delta = System.nanoTime() - time;
-			time = System.nanoTime();
-			sum += delta;
-		}
-		System.out.printf("%15s: %15dns%n", "Math.pow(x)", sum);
-		sum = 0;
-		for (int j = 0; j < num; j++) {
-			time = System.nanoTime();
-			for (int i = 0; i < 200000000; i++)
-				res[i] = Math.log1p(toCalc[i]);
-			delta = System.nanoTime() - time;
-			time = System.nanoTime();
-			sum += delta;
-		}
-		System.out.printf("%15s: %15dns%n", "Math.log1p(x)", sum);
-		sum = 0;
-		for (int j = 0; j < num; j++) {
-			time = System.nanoTime();
-			for (int i = 0; i < 200000000; i++)
-				res[i] = Math.atan(toCalc[i]);
-			delta = System.nanoTime() - time;
-			time = System.nanoTime();
-			sum += delta;
-		}
-		System.out.printf("%15s: %15dns%n", "Math.atan(x)", sum);
-		sum = 0;
-		for (int j = 0; j < num; j++) {
-			time = System.nanoTime();
-			for (int i = 0; i < 200000000; i++)
-				res[i] = Math.cbrt(toCalc[i]);
-			delta = System.nanoTime() - time;
-			time = System.nanoTime();
-			sum += delta;
-		}
-		System.out.printf("%15s: %15dns%n", "Math.cbrt(x)", sum);
-		sum = 0;
-		for (int j = 0; j < num; j++) {
-			time = System.nanoTime();
-			for (int i = 0; i < 200000000; i++)
-				res[i] = toCalc[i];
-			delta = System.nanoTime() - time;
-			time = System.nanoTime();
-			sum += delta;
-		}
-		System.out.printf("%15s: %15dns%n", "x", sum);
-	}
-
-	@SuppressWarnings("unused")
-	private static void testIO() {
-		byte[][][] images;
-		try (IDX3UByteReader imgReader = new IDX3UByteReader(new File("data/test-images.idx3-ubyte"))) {
-			images = imgReader.read();
-		} catch (IOException e) {
-			e.printStackTrace();
-			return;
-		}
-		byte[] labels;
-		try (IDX1UByteReader labelReader = new IDX1UByteReader(new File("data/test-labels.idx1-ubyte"))) {
-			labels = labelReader.read();
-		} catch (IOException e) {
-			e.printStackTrace();
-			return;
-		}
-		for (int i = 0; i < 3; i++) {
-			for (byte[] row : images[i]) {
-				for (byte b : row)
-					System.out.print(b >= 0 ? '.' : '#');
-				System.out.println();
-			}
-			System.out.println(labels[i]);
-			for (int j = 0; j < 28; j++)
-				System.out.print('=');
-			System.out.println('\n');
-		}
-	}
-
-}
-@formatter:on
-*/

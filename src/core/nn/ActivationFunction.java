@@ -31,4 +31,7 @@ public abstract class ActivationFunction {
 		return y;
 	}
 
+	@Override
+	public abstract String toString();
+
 }

@@ -10,15 +10,21 @@ import java.util.concurrent.Future;
 import core.data.DataPoint;
 import util.function.IntToDoubleTriFunction;
 
-public class FeedForwardNetwork {
+public class FeedForwardNetwork implements Comparable<FeedForwardNetwork> {
 
 	private static final int THREAD_COUNT = Runtime.getRuntime().availableProcessors();
 
 	private static final ExecutorService THREAD_POOL = Executors.newFixedThreadPool(THREAD_COUNT);
 
+	private static int idCounter = 0;
+
 	static {
 		System.out.println("Thread Count = " + THREAD_COUNT);
 	}
+
+	private final int id = idCounter++;
+
+	private final String name;
 
 	private final int inputSize;
 	private final int outputSize;
@@ -29,7 +35,8 @@ public class FeedForwardNetwork {
 
 	private double learningRate;
 
-	public FeedForwardNetwork(IntToDoubleTriFunction weightGenerator, int[] layerSizes, int outputSize, ActivationFunction[] activationFunctions, double learningRate) {
+	public FeedForwardNetwork(String name, IntToDoubleTriFunction weightGenerator, int[] layerSizes, int outputSize, ActivationFunction[] activationFunctions, double learningRate) {
+		this.name = name;
 		layerCount = activationFunctions.length;
 		if (layerSizes.length != layerCount)
 			throw new IllegalArgumentException("layerSizes.length (" + layerSizes.length + ") != activationFunctions.length" + activationFunctions.length + ")");
@@ -138,6 +145,10 @@ public class FeedForwardNetwork {
 		return pred;
 	}
 
+	public String getName() {
+		return name;
+	}
+
 	public int getLayerCount() {
 		return layerCount;
 	}
@@ -168,6 +179,34 @@ public class FeedForwardNetwork {
 					.append(layers[layerIndex].getWeightsAsString());
 		}
 		return builder.toString();
+	}
+
+	public int getID() {
+		return id;
+	}
+
+	@Override
+	public int compareTo(FeedForwardNetwork o) {
+		if (this == o)
+			return 0;
+//		else if (!name.equalsIgnoreCase(o.name))
+//			return name.compareToIgnoreCase(o.name);
+//		else if (!name.equals(o.name))
+//			return name.compareTo(o.name);
+		else if (id != o.id)
+			return Integer.compare(id, o.id);
+		else
+			return Integer.compare(System.identityHashCode(this), System.identityHashCode(o));
+	}
+
+	@Override
+	public String toString() {
+		return "FeedForwardNetwork [name=" + name + ", learningRate=" + learningRate + ", layers=" + Arrays.toString(layers) + ", outputSize=" + outputSize + "]";
+	}
+
+	@Override
+	public int hashCode() {
+		return name.hashCode() ^ id;
 	}
 
 }

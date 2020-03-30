@@ -130,4 +130,9 @@ public class Layer {
 		return builder.toString();
 	}
 
+	@Override
+	public String toString() {
+		return "Layer [size=" + size + ", activationFunction=" + activationFunction + "]";
+	}
+
 }

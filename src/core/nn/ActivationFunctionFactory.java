@@ -17,6 +17,11 @@ public final class ActivationFunctionFactory {
 				return 1d;
 			}
 
+			@Override
+			public String toString() {
+				return "Identity";
+			}
+
 		};
 	}
 
@@ -31,6 +36,11 @@ public final class ActivationFunctionFactory {
 			@Override
 			public double derivative(double x, double y) {
 				return slope;
+			}
+
+			@Override
+			public String toString() {
+				return "Linear [slope=" + slope + "]";
 			}
 
 		};
@@ -49,6 +59,11 @@ public final class ActivationFunctionFactory {
 				return x > 0 ? 1 : 0;
 			}
 
+			@Override
+			public String toString() {
+				return "ReLU";
+			}
+
 		};
 	}
 
@@ -63,6 +78,11 @@ public final class ActivationFunctionFactory {
 			@Override
 			public double derivative(double x, double y) {
 				return x > 0 ? slope : 0;
+			}
+
+			@Override
+			public String toString() {
+				return "ReLU [slope=" + slope + "]";
 			}
 
 		};
@@ -81,6 +101,11 @@ public final class ActivationFunctionFactory {
 				return x > 0 ? 1 : leakSlope;
 			}
 
+			@Override
+			public String toString() {
+				return "LeakyReLU [leakSlope=" + leakSlope + "]";
+			}
+
 		};
 	}
 
@@ -97,6 +122,11 @@ public final class ActivationFunctionFactory {
 				return x > 0 ? slope : leakSlope;
 			}
 
+			@Override
+			public String toString() {
+				return "LeakyReLU [slope=" + slope + ", leakSlope=" + leakSlope + "]";
+			}
+
 		};
 	}
 
@@ -111,6 +141,11 @@ public final class ActivationFunctionFactory {
 			@Override
 			public double derivative(double x, double y) {
 				return y * (1 - y);
+			}
+
+			@Override
+			public String toString() {
+				return "Logistic";
 			}
 
 		};
@@ -130,10 +165,15 @@ public final class ActivationFunctionFactory {
 				return toSquare * toSquare;
 			}
 
+			@Override
+			public String toString() {
+				return "FastLogistic";
+			}
+
 		};
 	}
 
-//	TODO public static final ActivationFunction createLogistic(double lowerBound, double upperBound, )
+//	TODO public static final ActivationFunction createLogistic(double lowerBound, double upperBound, ...)
 
 	public static final ActivationFunction createSoftplus() {
 		return new ActivationFunction() {
@@ -146,6 +186,11 @@ public final class ActivationFunctionFactory {
 			@Override
 			public double derivative(double x, double y) {
 				return 1 / (1 + Math.exp(-x));
+			}
+
+			@Override
+			public String toString() {
+				return "Softplus";
 			}
 
 		};
@@ -166,6 +211,11 @@ public final class ActivationFunctionFactory {
 			@Override
 			public double derivative(double x, double y) {
 				return negSlope + diff / (1 + Math.exp(-sharpness * (x - xOffset)));
+			}
+
+			@Override
+			public String toString() {
+				return "Softplus [negSlope=" + negSlope + ", posSlope=" + posSlope + ", sharpness=" + sharpness + ", xOffset=" + xOffset + ", yOffset= + yOffset";
 			}
 
 		};
