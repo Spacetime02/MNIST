@@ -1,2 +1,2 @@
 # MNIST
-My "Hello, World!" ML Project
+My "Hello, World!" machine learning project
